@@ -3,6 +3,8 @@ from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from django.core.validators import MinValueValidator
+from django.db.models import Sum, F
 from django_rest_passwordreset.tokens import get_token_generator
 
 STATE_CHOICES = (
@@ -90,9 +92,11 @@ class User(AbstractUser):
         ),
     )
     type = models.CharField(verbose_name='Тип пользователя', choices=USER_TYPE_CHOICES, max_length=5, default='buyer')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Дата обновления')
 
     def __str__(self):
-        return f'{self.first_name} {self.last_name}'
+        return f'{self.first_name} {self.last_name} ({self.email})'
 
     class Meta:
         verbose_name = 'Пользователь'
@@ -108,6 +112,8 @@ class Shop(models.Model):
                                 blank=True, null=True,
                                 on_delete=models.CASCADE)
     state = models.BooleanField(verbose_name='статус получения заказов', default=True)
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Дата обновления')
 
     # filename
 
@@ -124,6 +130,8 @@ class Category(models.Model):
     objects = models.manager.Manager()
     name = models.CharField(max_length=40, verbose_name='Название')
     shops = models.ManyToManyField(Shop, verbose_name='Магазины', related_name='categories', blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Дата обновления')
 
     class Meta:
         verbose_name = 'Категория'
@@ -139,6 +147,8 @@ class Product(models.Model):
     name = models.CharField(max_length=80, verbose_name='Название')
     category = models.ForeignKey(Category, verbose_name='Категория', related_name='products', blank=True,
                                  on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Дата обновления')
 
     class Meta:
         verbose_name = 'Продукт'
@@ -146,7 +156,7 @@ class Product(models.Model):
         ordering = ('-name',)
 
     def __str__(self):
-        return self.name
+        return f'{self.name} (ID: {self.id})'
 
 
 class ProductInfo(models.Model):
@@ -160,6 +170,14 @@ class ProductInfo(models.Model):
     quantity = models.PositiveIntegerField(verbose_name='Количество')
     price = models.PositiveIntegerField(verbose_name='Цена')
     price_rrc = models.PositiveIntegerField(verbose_name='Рекомендуемая розничная цена')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Дата обновления')
+
+    def get_discounted_price(self):
+        return self.price * (1 - self.discount / 100)
+
+    def __str__(self):
+        return f'{self.product.name} ({self.shop.name})'
 
     class Meta:
         verbose_name = 'Информация о продукте'
@@ -172,6 +190,8 @@ class ProductInfo(models.Model):
 class Parameter(models.Model):
     objects = models.manager.Manager()
     name = models.CharField(max_length=40, verbose_name='Название')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Дата обновления')
 
     class Meta:
         verbose_name = 'Имя параметра'
@@ -190,6 +210,11 @@ class ProductParameter(models.Model):
     parameter = models.ForeignKey(Parameter, verbose_name='Параметр', related_name='product_parameters', blank=True,
                                   on_delete=models.CASCADE)
     value = models.CharField(verbose_name='Значение', max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Дата обновления')
+
+    def __str__(self):
+        return f'{self.parameter.name}: {self.value}'
 
     class Meta:
         verbose_name = 'Параметр'
@@ -212,6 +237,8 @@ class Contact(models.Model):
     building = models.CharField(max_length=15, verbose_name='Строение', blank=True)
     apartment = models.CharField(max_length=15, verbose_name='Квартира', blank=True)
     phone = models.CharField(max_length=20, verbose_name='Телефон')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Дата обновления')
 
     class Meta:
         verbose_name = 'Контакты пользователя'
@@ -231,6 +258,12 @@ class Order(models.Model):
     contact = models.ForeignKey(Contact, verbose_name='Контакт',
                                 blank=True, null=True,
                                 on_delete=models.CASCADE)
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Дата обновления')
+
+    def total_sum(self):
+        return self.ordered_items.aggregate(
+            total_sum=Sum(F('quantity') * F('product_info__price'))
+        )['total_sum'] or 0
 
     class Meta:
         verbose_name = 'Заказ'
@@ -238,12 +271,7 @@ class Order(models.Model):
         ordering = ('-dt',)
 
     def __str__(self):
-        return str(self.dt)
-
-    # @property
-    # def sum(self):
-    #     return self.ordered_items.aggregate(total=Sum("quantity"))["total"]
-
+        return f'Заказ №{self.id} от {self.dt.strftime("%d.%m.%Y")}'
 
 class OrderItem(models.Model):
     objects = models.manager.Manager()
@@ -254,6 +282,11 @@ class OrderItem(models.Model):
                                      blank=True,
                                      on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField(verbose_name='Количество')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Дата обновления')
+
+    def __str__(self):
+        return f'{self.product_info.product.name} x {self.quantity}'
 
     class Meta:
         verbose_name = 'Заказанная позиция'
