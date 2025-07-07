@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import include, path
 from django_rest_passwordreset.views import reset_password_request_token, reset_password_confirm
 from .views import (PartnerUpdate, RegisterAccount, LoginAccount,
                     CategoryView, ShopView, ProductInfoView, BasketView,
@@ -47,4 +47,7 @@ urlpatterns = [
          name='shop-detail'),
     path('shops/<int:pk>/import_products/', ShopViewSet.as_view({'post': 'import_products'}),
          name='shop-import-products'),
+
+    # social autorization
+    path('social-auth/', include('social_django.urls', namespace='social')),
 ]

@@ -27,6 +27,11 @@ from .serializers import UserSerializer, CategorySerializer, ShopSerializer, Pro
     OrderItemSerializer, OrderSerializer, ContactSerializer, UserRegisterSerializer, ConfirmEmailTokenSerializer
 from .signals import new_user_registered, new_order
 from .tasks import send_order_confirmation_email, process_import_task
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from social_django.utils import psa
+from rest_framework_simplejwt.tokens import RefreshToken
 
 
 class RegisterAccount(APIView):
@@ -563,3 +568,15 @@ class ShopViewSet(viewsets.ModelViewSet):
         finally:
             if os.path.exists(file_path):
                 os.remove(file_path)
+
+class SocialAuthView(APIView):
+    @psa()
+    def post(self, request, backend):
+        user = request.backend.do_auth(request.data.get('access_token'))
+        if user:
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+            }, status=status.HTTP_200_OK)
+        return Response({'error': 'Authentication failed'}, status=status.HTTP_400_BAD_REQUEST)
