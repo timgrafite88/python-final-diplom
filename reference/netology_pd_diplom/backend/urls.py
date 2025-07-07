@@ -20,6 +20,8 @@ schema_view = get_schema_view(
 )
 
 urlpatterns = [
+
+    path('admin/', include('baton.urls')),
     path('partner/update', PartnerUpdate.as_view(), name='partner-update'),
     path('partner/state', PartnerState.as_view(), name='partner-state'),
     path('partner/orders', PartnerOrders.as_view(), name='partner-orders'),

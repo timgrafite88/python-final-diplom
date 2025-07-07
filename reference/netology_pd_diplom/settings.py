@@ -34,6 +34,10 @@ INSTALLED_APPS = [
 
     # Local apps
     'backend',
+
+    # admin
+    'baton',
+    'baton.autodiscover',
 ]
 
 MIDDLEWARE = [
@@ -297,6 +301,23 @@ ORDER_STATUSES = {
 USER_TYPES = {
     'shop': 'Магазин',
     'buyer': 'Покупатель',
+}
+
+
+BATON = {
+    'SITE_HEADER': 'Netology PD Diploma Admin',
+    'SITE_TITLE': 'Netology PD Diploma Administration',
+    'INDEX_TITLE': 'Site administration',
+    'SUPPORT_HREF': 'mailto:support@example.com',
+    'COPYRIGHT': 'copyright © 2023 Netology PD Diploma',
+    'POWERED_BY': '<a href="https://netology.ru">Netology</a>',
+    'CONFIRM_UNSAVED_CHANGES': True,
+    'SHOW_MULTIPART_UPLOADING': True,
+    'ENABLE_IMAGES_PREVIEW': True,
+    'CHANGELIST_FILTERS_IN_MODAL': True,
+    'MENU_ALWAYS_COLLAPSED': False,
+    'MENU_TITLE': 'Menu',
+    'GRAVATAR_DEFAULT_IMG': 'retro',
 }
 
 # Security settings (для продакшена)
