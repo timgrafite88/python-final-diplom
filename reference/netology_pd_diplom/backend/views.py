@@ -20,11 +20,10 @@ from yaml import load as load_yaml, Loader
 from django.core.files.storage import FileSystemStorage
 import tempfile
 import os
-
 from .models import Shop, Category, Product, ProductInfo, Parameter, ProductParameter, Order, OrderItem, \
     Contact, ConfirmEmailToken, User
 from .serializers import UserSerializer, CategorySerializer, ShopSerializer, ProductInfoSerializer, \
-    OrderItemSerializer, OrderSerializer, ContactSerializer, UserRegisterSerializer, ConfirmEmailTokenSerializer
+    OrderItemSerializer, OrderSerializer, ContactSerializer, UserRegisterSerializer, ConfirmEmailTokenSerializer, ProductSerializer
 from .signals import new_user_registered, new_order
 from .tasks import send_order_confirmation_email, process_import_task
 from rest_framework.views import APIView
@@ -32,6 +31,10 @@ from rest_framework.response import Response
 from rest_framework import status
 from social_django.utils import psa
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.views.decorators.cache import cache_page
+from cachalot.api import cachalot_disabled
+import sentry_sdk
+from .tasks import generate_thumbnails
 
 
 class RegisterAccount(APIView):
@@ -580,3 +583,35 @@ class SocialAuthView(APIView):
                 'access': str(refresh.access_token),
             }, status=status.HTTP_200_OK)
         return Response({'error': 'Authentication failed'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class TriggerErrorView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            1 / 0  # Искусственная ошибка
+        except Exception as e:
+            request.sentry_event_id = sentry_sdk.capture_exception(e)
+            raise APIException("Произошла ошибка, ID: " + str(request.sentry_event_id))
+
+
+class ProductListView(APIView):
+    @method_decorator(cache_page(60 * 5))  # Кэш на 5 минут
+    def get(self, request):
+        with cachalot_disabled():  # Для сложных запросов
+            products = Product.objects.select_related('category').prefetch_related('shops')
+            serializer = ProductSerializer(products, many=True)
+        return Response(serializer.data)
+
+
+class UserAvatarUploadView(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser]
+
+    def post(self, request):
+        user = request.user
+        user.avatar = request.FILES['avatar']
+        user.save()
+        generate_thumbnails.delay('user', user.id)
+        return Response({'status': 'success'})

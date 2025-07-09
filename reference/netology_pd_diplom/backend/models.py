@@ -6,6 +6,7 @@ from django.utils.translation import gettext_lazy as _
 from django.core.validators import MinValueValidator
 from django.db.models import Sum, F
 from django_rest_passwordreset.tokens import get_token_generator
+from easy_thumbnails.fields import ThumbnailerImageField
 
 STATE_CHOICES = (
     ('basket', 'Статус корзины'),
@@ -79,6 +80,7 @@ class User(AbstractUser):
     type = models.CharField(verbose_name='Тип пользователя', choices=USER_TYPE_CHOICES, max_length=5, default='buyer')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='Дата обновления')
+    avatar = ThumbnailerImageField(upload_to='avatars/', null=True)
 
     def __str__(self):
         return f'{self.first_name} {self.last_name} ({self.email})'
@@ -126,6 +128,7 @@ class Product(models.Model):
                                on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='Дата обновления')
+    image = ThumbnailerImageField(upload_to='products/', null=True)
 
     class Meta:
         verbose_name = 'Продукт'

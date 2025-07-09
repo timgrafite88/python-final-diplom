@@ -4,6 +4,7 @@ from .models import (
     Parameter, ProductParameter, Order, OrderItem, Contact,
     ConfirmEmailToken
 )
+from easy_thumbnails.templatetags.thumbnail import thumbnail_url
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -114,3 +115,15 @@ class ConfirmEmailTokenSerializer(serializers.ModelSerializer):
     class Meta:
         model = ConfirmEmailToken
         fields = ('key',)
+
+class ProductSerializer(serializers.ModelSerializer):
+    image_small = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Product
+        fields = ['id', 'name', 'category', 'image', 'image_small']
+
+    def get_image_small(self, obj):
+        if obj.image:
+            return thumbnail_url(obj.image, 'product_small')
+        return None

@@ -2,8 +2,8 @@ from celery import shared_task
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.conf import settings
-from .models import Order
-
+from .models import Order, User, Product
+from easy_thumbnails.files import generate_all_aliases
 
 @shared_task
 def send_order_confirmation_email(order_id):
@@ -33,3 +33,12 @@ def process_import_task(file_path, user_id):
         return {'status': 'success', 'result': result}
     except Exception as e:
         return {'status': 'error', 'error': str(e)}
+
+@shared_task
+def generate_thumbnails(model_name, pk):
+    model = User if model_name == 'user' else Product
+    instance = model.objects.get(pk=pk)
+    if model_name == 'user' and instance.avatar:
+        generate_all_aliases(instance.avatar, include_global=True)
+    elif model_name == 'product' and instance.image:
+        generate_all_aliases(instance.image, include_global=True)

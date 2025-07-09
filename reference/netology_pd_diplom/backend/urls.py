@@ -3,7 +3,7 @@ from django_rest_passwordreset.views import reset_password_request_token, reset_
 from .views import (PartnerUpdate, RegisterAccount, LoginAccount,
                     CategoryView, ShopView, ProductInfoView, BasketView,
                     AccountDetails, ContactView, OrderView, PartnerState,
-                    PartnerOrders, ConfirmAccount, ShopViewSet)
+                    PartnerOrders, ConfirmAccount, ShopViewSet, TriggerErrorView, UserAvatarUploadView)
 
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
@@ -52,4 +52,8 @@ urlpatterns = [
 
     # social autorization
     path('social-auth/', include('social_django.urls', namespace='social')),
+
+    path('api/trigger-error/', TriggerErrorView.as_view(), name='trigger-error'),
+
+    path('api/user/avatar/', UserAvatarUploadView.as_view()),
 ]

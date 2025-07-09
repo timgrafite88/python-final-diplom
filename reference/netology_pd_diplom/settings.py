@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 from datetime import timedelta
+import sentry_sdk
+from sentry_sdk.integrations.django import DjangoIntegration
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -12,6 +14,8 @@ SECRET_KEY = 'django-insecure-your-secret-key-here'  # Замените в пр�
 DEBUG = True
 
 ALLOWED_HOSTS = ['*']  # Для разработки, уточните для продакшена
+
+THUMBNAIL_BASEDIR = 'thumbnails'
 
 # Application definition
 INSTALLED_APPS = [
@@ -38,6 +42,9 @@ INSTALLED_APPS = [
     # admin
     'baton',
     'baton.autodiscover',
+
+    'easy_thumbnails',
+    'django_cleanup',
 ]
 
 MIDDLEWARE = [
@@ -101,6 +108,13 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
+
+THUMBNAIL_ALIASES = {
+    '': {
+        'avatar_small': {'size': (50, 50), 'crop': True},
+        'product_medium': {'size': (300, 300), 'crop': True},
+    }
+}
 
 # Internationalization
 LANGUAGE_CODE = 'ru-ru'
@@ -320,6 +334,21 @@ BATON = {
     'GRAVATAR_DEFAULT_IMG': 'retro',
 }
 
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://localhost:6379/1",  # БД №1 для кэша
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    }
+}
+
+# Настройки Cachalot
+CACHALOT_ENABLED = True
+CACHALOT_TIMEOUT = 60 * 15  # 15 минут
+CACHALOT_ONLY_CACHABLE_TABLES = ('backend_category', 'backend_product')
+
 # Security settings (для продакшена)
 if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000  # 1 year
@@ -329,3 +358,12 @@ if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+
+if not DEBUG:  # Только в production
+    sentry_sdk.init(
+        dsn="ВАШ_DSN_ИЗ_SENTRY",  # Получить на sentry.io
+        integrations=[DjangoIntegration()],
+        traces_sample_rate=1.0,
+        send_default_pii=True  # Разрешить сбор личных данных (опционально)
+    )
